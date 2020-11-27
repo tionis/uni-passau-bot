@@ -27,8 +27,8 @@ var values [][]string
 
 //var nextvalues [][]string
 
-// uniPassauBot handles all the legacy uni-passau-bot code for telegram
-func uniPassauBot() {
+// UniPassauBot takes a telegram token and starts the uni passau bot on this bot account
+func UniPassauBot(token string) {
 
 	botquit := make(chan bool) // channel for quitting of bot
 
@@ -47,7 +47,6 @@ func uniPassauBot() {
 	}()
 
 	// check for and read config variable, then create bot object
-	token := os.Getenv("UNIPASSAUBOT_TOKEN")
 	b, err := tb.NewBot(tb.Settings{
 		Token:  token,
 		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
