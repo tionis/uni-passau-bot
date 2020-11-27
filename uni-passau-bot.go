@@ -83,7 +83,7 @@ func UniPassauBot(token string) {
 	})
 	b.Handle(&replyBtn3, func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
-			_, _ = b.Send(m.Sender, foodweek(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+			_, _ = b.Send(m.Sender, FoodWeek(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 		} else {
 			_, _ = b.Send(m.Chat, "Sorry, it's Corona time! 😔")
 		}
@@ -137,11 +137,11 @@ func UniPassauBot(token string) {
 	b.Handle("/foodweek", func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
 			if !m.Private() {
-				_, _ = b.Send(m.Chat, foodweek())
+				_, _ = b.Send(m.Chat, FoodWeek())
 				//_, _ = b.Send(m.Chat, "This command is temporarily disabled.")
 				mensaBotLog.Info("Group Message:")
 			} else {
-				_, _ = b.Send(m.Sender, foodweek(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+				_, _ = b.Send(m.Sender, FoodWeek(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 				//_, _ = b.Send(m.Sender, "This command is temporarily disabled.")
 			}
 		} else {
@@ -362,8 +362,8 @@ func FoodTomorrow() string {
 	return day
 }
 
-// returns a string to send on telegram of the food for the week
-func foodweek() string {
+// FoodWeek returns a string of the food for the week
+func FoodWeek() string {
 	// reads actual file
 	err := updateFoodWeek()
 	if err != nil {
