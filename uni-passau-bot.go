@@ -67,7 +67,7 @@ func UniPassauBot(token string) {
 	// handle special keyboard commands
 	b.Handle(&replyBtn, func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
-			_, _ = b.Send(m.Sender, foodtoday(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+			_, _ = b.Send(m.Sender, FoodToday(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 		} else {
 			_, _ = b.Send(m.Chat, "Sorry, it's Corona time! 😔")
 		}
@@ -75,7 +75,7 @@ func UniPassauBot(token string) {
 	})
 	b.Handle(&replyBtn2, func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
-			_, _ = b.Send(m.Sender, foodtomorrow(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+			_, _ = b.Send(m.Sender, FoodTomorrow(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 		} else {
 			_, _ = b.Send(m.Chat, "Sorry, it's Corona time! 😔")
 		}
@@ -110,10 +110,10 @@ func UniPassauBot(token string) {
 	b.Handle("/food", func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
 			if !m.Private() {
-				_, _ = b.Send(m.Chat, foodtoday())
+				_, _ = b.Send(m.Chat, FoodToday())
 				mensaBotLog.Info("Group Message:")
 			} else {
-				_, _ = b.Send(m.Sender, foodtoday(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+				_, _ = b.Send(m.Sender, FoodToday(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 			}
 		} else {
 			_, _ = b.Send(m.Chat, "Sorry, it's Corona time! 😔")
@@ -124,10 +124,10 @@ func UniPassauBot(token string) {
 	b.Handle("/foodtomorrow", func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
 			if !m.Private() {
-				_, _ = b.Send(m.Chat, foodtomorrow())
+				_, _ = b.Send(m.Chat, FoodTomorrow())
 				mensaBotLog.Info("Group Message:")
 			} else {
-				_, _ = b.Send(m.Sender, foodtomorrow(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+				_, _ = b.Send(m.Sender, FoodTomorrow(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 			}
 		} else {
 			_, _ = b.Send(m.Chat, "Sorry, it's Corona time! 😔")
@@ -220,9 +220,8 @@ func UniPassauBot(token string) {
 	b.Start()
 }
 
-// "UI" Logic
-// returns a string to send on telegram of the food today
-func foodtoday() string {
+// FoodToday return a string of todays food
+func FoodToday() string {
 	// returns the string to print to user who requested the mensa plan
 	// reads actual file
 	err := updateFoodWeek()
@@ -275,8 +274,8 @@ func foodtoday() string {
 	return day
 }
 
-// returns a string to send via telegram for the food tomorrow
-func foodtomorrow() string {
+// FoodTomorrow returns a string for the food tomorrow
+func FoodTomorrow() string {
 	// returns the string to print to user who requested the mensa plan
 	// reads actual file
 	err := updateFoodWeek()
