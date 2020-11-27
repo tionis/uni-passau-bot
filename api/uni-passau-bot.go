@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"encoding/csv"
@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	// Use this for heroku metrics
 	_ "github.com/heroku/x/hmetrics/onload"
 	"github.com/jinzhu/now"
 	"github.com/keybase/go-logging"
