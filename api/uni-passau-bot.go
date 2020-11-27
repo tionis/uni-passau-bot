@@ -30,6 +30,7 @@ var values [][]string
 
 // UniPassauBot takes a telegram token and starts the uni passau bot on this bot account
 func UniPassauBot(token string) {
+	dbInit()
 
 	botquit := make(chan bool) // channel for quitting of bot
 
@@ -47,7 +48,7 @@ func UniPassauBot(token string) {
 		}
 	}()
 
-	// check for and read config variable, then create bot object
+	// create bot object
 	b, err := tb.NewBot(tb.Settings{
 		Token:  token,
 		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
