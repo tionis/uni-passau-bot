@@ -1,12 +1,8 @@
-package api
+package uni_passau_bot
 
 import (
 	"time"
-
-	"github.com/keybase/go-logging"
 )
-
-var dataLog = logging.MustGetLogger("data")
 
 var tmpData map[string]map[string]tmpDataObject
 
@@ -49,3 +45,4 @@ func delTmp(bucket string, key string) {
 	}
 	delete(tmpData[bucket], key)
 }
+

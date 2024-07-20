@@ -1,8 +1,12 @@
-package api
+package uni_passau_bot
 
 import (
 	"encoding/csv"
+	"github.com/jinzhu/now"
+	"golang.org/x/text/encoding/charmap"
+	tb "gopkg.in/tucnak/telebot.v2"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -11,16 +15,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	// Use this for heroku metrics
-	_ "github.com/heroku/x/hmetrics/onload"
-	"github.com/jinzhu/now"
-	"github.com/keybase/go-logging"
-	"golang.org/x/text/encoding/charmap"
-	tb "gopkg.in/tucnak/telebot.v2"
 )
-
-var mensaBotLog = logging.MustGetLogger("mensaBot")
 
 // Global Variables
 // Matrix Slice for food handling (should be replaced in future??)
@@ -29,7 +24,7 @@ var values [][]string
 //var nextvalues [][]string
 
 // UniPassauBot takes a telegram token and starts the uni passau bot on this bot account
-func UniPassauBot(token string) {
+func UniPassauBot(logger *slog.Logger, token string) {
 	dbInit()
 
 	botquit := make(chan bool) // channel for quitting of bot
@@ -41,8 +36,8 @@ func UniPassauBot(token string) {
 		sig := <-signalChannel
 		switch sig {
 		case os.Interrupt:
-			mensaBotLog.Info("Interruption Signal received, shutting down...")
-			exit(botquit)
+			logger.Info("Interruption Signal received, shutting down...")
+			exit(logger, botquit)
 		case syscall.SIGTERM:
 			botquit <- true
 		}
@@ -54,7 +49,7 @@ func UniPassauBot(token string) {
 		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
 	})
 	if err != nil {
-		mensaBotLog.Error("Error starting Uni Passau Bot", err)
+		logger.Error("Error starting Uni Passau Bot", err)
 		return
 	}
 
@@ -69,87 +64,87 @@ func UniPassauBot(token string) {
 	// handle special keyboard commands
 	b.Handle(&replyBtn, func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
-			_, _ = b.Send(m.Sender, FoodToday(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+			_, _ = b.Send(m.Sender, FoodToday(logger), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 		} else {
 			_, _ = b.Send(m.Chat, "Sorry, it's Corona time! 😔")
 		}
-		printInfo(m)
+		printInfo(logger, m)
 	})
 	b.Handle(&replyBtn2, func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
-			_, _ = b.Send(m.Sender, FoodTomorrow(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+			_, _ = b.Send(m.Sender, FoodTomorrow(logger), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 		} else {
 			_, _ = b.Send(m.Chat, "Sorry, it's Corona time! 😔")
 		}
-		printInfo(m)
+		printInfo(logger, m)
 	})
 	b.Handle(&replyBtn3, func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
-			_, _ = b.Send(m.Sender, FoodWeek(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+			_, _ = b.Send(m.Sender, FoodWeek(logger), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 		} else {
 			_, _ = b.Send(m.Chat, "Sorry, it's Corona time! 😔")
 		}
-		printInfo(m)
+		printInfo(logger, m)
 	})
 	// handle standard text commands
 	b.Handle("/hello", func(m *tb.Message) {
 		_, _ = b.Send(m.Sender, "Hi! How are you?", tb.ModeMarkdown)
-		printInfo(m)
+		printInfo(logger, m)
 	})
 	b.Handle("/start", func(m *tb.Message) {
 		_, _ = b.Send(m.Sender, "Hallo! Ich bin der inoffizielle ChatBot der Uni Passau! Was kann ich dir Gutes tun?\nWenn du Hilfe benötigst benutze einfach /help!\nSolltest du den Mensa- und Stundenplan in einer App wollen, schreibe /app für mehr Informationen", &tb.ReplyMarkup{ReplyKeyboard: replyKeys})
-		printInfo(m)
+		printInfo(logger, m)
 	})
 	b.Handle("/app", func(m *tb.Message) {
 		_, _ = b.Send(m.Sender, "Du kannst dir die Android-App im [Play Store](https://play.google.com/store/apps/details?id=studip_uni_passau.femtopedia.de.unipassaustudip) gratis herunterladen.\nHinweis: Diese App wird von einer anderen Person entwickelt, bitte kontaktiere den App-Entwickler für Support!", tb.ModeMarkdown)
-		printInfo(m)
+		printInfo(logger, m)
 
 	})
 	b.Handle("/help", func(m *tb.Message) {
 		_, _ = b.Send(m.Sender, "Information about the Bot is in the Description\nAvailable Commands are:\n*/help* - Show this help\n*/food* - Get Information for the food TODAY in the Uni Passau\n*/foodtomorrow* - Get Information for the food TOMORROW in the Uni Passau\n*/foodweek* - Get Information for the wood this WEEK in the Uni Passau\n*/contact* - Contact the bot maintainer for requests and bug reports\n*/app* - More Information for an useful Android-App for studip", tb.ModeMarkdown)
-		printInfo(m)
+		printInfo(logger, m)
 	})
 	b.Handle("/food", func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
 			if !m.Private() {
-				_, _ = b.Send(m.Chat, FoodToday())
-				mensaBotLog.Info("Group Message:")
+				_, _ = b.Send(m.Chat, FoodToday(logger))
+				logger.Info("Group Message:")
 			} else {
-				_, _ = b.Send(m.Sender, FoodToday(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+				_, _ = b.Send(m.Sender, FoodToday(logger), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 			}
 		} else {
 			_, _ = b.Send(m.Chat, "Sorry, it's Corona time! 😔")
 		}
-		printInfo(m)
-		//printAnswer(foodtoday())
+		printInfo(logger, m)
+		//printAnswer(FoodToday(logger))
 	})
 	b.Handle("/foodtomorrow", func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
 			if !m.Private() {
-				_, _ = b.Send(m.Chat, FoodTomorrow())
-				mensaBotLog.Info("Group Message:")
+				_, _ = b.Send(m.Chat, FoodTomorrow(logger))
+				logger.Info("Group Message:")
 			} else {
-				_, _ = b.Send(m.Sender, FoodTomorrow(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+				_, _ = b.Send(m.Sender, FoodTomorrow(logger), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 			}
 		} else {
 			_, _ = b.Send(m.Chat, "Sorry, it's Corona time! 😔")
 		}
-		printInfo(m)
+		printInfo(logger, m)
 	})
 	b.Handle("/foodweek", func(m *tb.Message) {
 		if getTmp("uni-passau-bot", "isCorona") != "true" {
 			if !m.Private() {
-				_, _ = b.Send(m.Chat, FoodWeek())
+				_, _ = b.Send(m.Chat, FoodWeek(logger))
 				//_, _ = b.Send(m.Chat, "This command is temporarily disabled.")
-				mensaBotLog.Info("Group Message:")
+				logger.Info("Group Message:")
 			} else {
-				_, _ = b.Send(m.Sender, FoodWeek(), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
+				_, _ = b.Send(m.Sender, FoodWeek(logger), &tb.ReplyMarkup{ReplyKeyboard: replyKeys}, tb.ModeMarkdown)
 				//_, _ = b.Send(m.Sender, "This command is temporarily disabled.")
 			}
 		} else {
 			_, _ = b.Send(m.Chat, "Sorry, it's Corona time! 😔")
 		}
-		printInfo(m)
+		printInfo(logger, m)
 	})
 	b.Handle("/contact", func(m *tb.Message) {
 		sendstring := ""
@@ -158,11 +153,11 @@ func UniPassauBot(token string) {
 		} else {
 			_, _ = b.Send(m.Sender, "Sending Message to the Bot Maintainer...")
 			tionis := tb.Chat{ID: 248533143}
-			sendstring = "Message by " + m.Sender.FirstName + " " + m.Sender.LastName + "\nID: " + strconv.Itoa(m.Sender.ID) + " Username: " + m.Sender.Username + "\n- - - - -\n" + strings.TrimPrefix(m.Text, "/contact ")
+			sendstring = "Message by " + m.Sender.FirstName + " " + m.Sender.LastName + "\nID: " + strconv.Itoa(int(m.Sender.ID)) + " Username: " + m.Sender.Username + "\n- - - - -\n" + strings.TrimPrefix(m.Text, "/contact ")
 			_, _ = b.Send(&tionis, sendstring)
 		}
-		printInfo(m)
-		printAnswer(sendstring)
+		printInfo(logger, m)
+		printAnswer(logger, sendstring)
 	})
 	b.Handle("/send", func(m *tb.Message) {
 		if m.Sender.ID == 248533143 {
@@ -173,60 +168,60 @@ func UniPassauBot(token string) {
 			_, _ = b.Send(&rec, s[1])
 		} else {
 			_, _ = b.Send(m.Sender, "You are not authorized to execute this command!")
-			printInfo(m)
+			printInfo(logger, m)
 		}
 	})
 	b.Handle("Danke", func(m *tb.Message) {
 		_, _ = b.Send(m.Sender, "_Gern geschehen!_", tb.ModeMarkdown)
-		printInfo(m)
-		printAnswer("_Gern geschehen!_")
+		printInfo(logger, m)
+		printAnswer(logger, "_Gern geschehen!_")
 	})
 	b.Handle("Thanks", func(m *tb.Message) {
 		_, _ = b.Send(m.Sender, "_It's a pleasure!_", tb.ModeMarkdown)
-		printInfo(m)
-		printAnswer("_It's a pleasure!_")
+		printInfo(logger, m)
+		printAnswer(logger, "_It's a pleasure!_")
 	})
 	b.Handle("/ping", func(m *tb.Message) {
 		_, _ = b.Send(m.Sender, "_pong_", tb.ModeMarkdown)
-		printInfo(m)
-		printAnswer("_pong_")
+		printInfo(logger, m)
+		printAnswer(logger, "_pong_")
 	})
 	b.Handle(tb.OnAddedToGroup, func(m *tb.Message) {
-		mensaBotLog.Info("Group Message:")
-		printInfo(m)
+		logger.Info("Group Message:")
+		printInfo(logger, m)
 	})
 	b.Handle(tb.OnText, func(m *tb.Message) {
 		sendstring := "Unknown Command - use help to get a list of available commands"
 		if !m.Private() {
-			mensaBotLog.Info("Message from Group:")
+			logger.Info("Message from Group:")
 		} else {
 			_, _ = b.Send(m.Sender, sendstring)
 		}
-		printInfo(m)
-		printAnswer(sendstring)
+		printInfo(logger, m)
+		printAnswer(logger, sendstring)
 	})
 
 	// Graceful Shutdown (botquit)
 	go func() {
 		<-botquit
 		b.Stop()
-		mensaBotLog.Info("Bot was stopped")
+		logger.Info("Bot was stopped")
 		os.Exit(3)
 	}()
 
 	// init preparations
-	loadFoodWeekArray()
+	loadFoodWeekArray(logger)
 
 	// print startup message
-	mensaBotLog.Info("Starting up...")
+	logger.Info("Starting up...")
 	b.Start()
 }
 
 // FoodToday return a string of todays food
-func FoodToday() string {
+func FoodToday(logger *slog.Logger) string {
 	// returns the string to print to user who requested the mensa plan
 	// reads actual file
-	err := updateFoodWeek()
+	err := updateFoodWeek(logger)
 	if err != nil {
 		return "An error occurred!"
 	}
@@ -277,10 +272,10 @@ func FoodToday() string {
 }
 
 // FoodTomorrow returns a string for the food tomorrow
-func FoodTomorrow() string {
+func FoodTomorrow(logger *slog.Logger) string {
 	// returns the string to print to user who requested the mensa plan
 	// reads actual file
-	err := updateFoodWeek()
+	err := updateFoodWeek(logger)
 	if err != nil {
 		return "An error occurred!"
 	}
@@ -365,9 +360,9 @@ func FoodTomorrow() string {
 }
 
 // FoodWeek returns a string of the food for the week
-func FoodWeek() string {
+func FoodWeek(logger *slog.Logger) string {
 	// reads actual file
-	err := updateFoodWeek()
+	err := updateFoodWeek(logger)
 	if err != nil {
 		return "An error occurred!"
 	}
@@ -474,10 +469,10 @@ func weekDate(day int) string {
 // Direct Data Manipulation Logic
 
 // Load food for the week into array
-func loadFoodWeekArray() {
-	err := updateFoodWeek()
+func loadFoodWeekArray(logger *slog.Logger) {
+	err := updateFoodWeek(logger)
 	if err != nil {
-		mensaBotLog.Error("Could not update food for week: ", err)
+		logger.Error("Could not update food for week: ", err)
 	}
 	loc, _ := time.LoadLocation("Europe/Berlin")
 	_, thisWeek := time.Now().In(loc).UTC().ISOWeek()
@@ -542,7 +537,7 @@ func delInf(input string) string {
 }
 
 // Transforms the data from the uni-passau version of the csv file to a standard one
-func transformAndSaveFoodWeekData(input io.Reader, week string) error {
+func transformAndSaveFoodWeekData(logger *slog.Logger, input io.Reader, week string) error {
 	// Transform data from ISO to UTF
 	reader := charmap.ISO8859_1.NewDecoder().Reader(input)
 
@@ -550,7 +545,7 @@ func transformAndSaveFoodWeekData(input io.Reader, week string) error {
 	buf := new(strings.Builder)
 	_, err := io.Copy(buf, reader)
 	if err != nil {
-		mensaBotLog.Error("Error reading from io.Reader to transform file: ", err)
+		logger.Error("Error reading from io.Reader to transform file: ", err)
 		return err
 	}
 	newContents := strings.ReplaceAll(buf.String(), ",", "*")
@@ -561,7 +556,7 @@ func transformAndSaveFoodWeekData(input io.Reader, week string) error {
 }
 
 // DownloadFile downloads the newest file based on the week number
-func downloadFood(week string) error {
+func downloadFood(logger *slog.Logger, week string) error {
 	// Downloads the csv file
 	s1 := []string{"https://www.stwno.de/infomax/daten-extern/csv/UNI-P/", week, ".csv"}
 	url := strings.Join(s1, "")
@@ -569,32 +564,32 @@ func downloadFood(week string) error {
 	// Get the data
 	resp, err := http.Get(url)
 	if err != nil {
-		mensaBotLog.Error("Could not download food for this week! Error: ", err)
+		logger.Error("Could not download food for this week! Error: ", err)
 		return err
 	}
 
 	// Load new data
-	err = transformAndSaveFoodWeekData(resp.Body, week)
+	err = transformAndSaveFoodWeekData(logger, resp.Body, week)
 	if err != nil {
 		return err
 	}
-	loadFoodWeekArray()
+	loadFoodWeekArray(logger)
 	err = resp.Body.Close()
 	if err != nil {
-		mensaBotLog.Error("Error closing response Body: ", err)
+		logger.Error("Error closing response Body: ", err)
 		return err
 	}
 	return nil
 }
 
 // Update the food for the week
-func updateFoodWeek() error {
+func updateFoodWeek(logger *slog.Logger) error {
 	loc, _ := time.LoadLocation("Europe/Berlin")
 	_, thisWeek := time.Now().In(loc).UTC().ISOWeek()
 	weekstring := strconv.Itoa(thisWeek)
 	if getTmp("mensa", "food|week|"+weekstring) == "" {
-		mensaBotLog.Info("No File for this week found - starting download")
-		err := downloadFood(weekstring)
+		logger.Info("No File for this week found - starting download")
+		err := downloadFood(logger, weekstring)
 		if err != nil {
 			return err
 		}
@@ -603,25 +598,26 @@ func updateFoodWeek() error {
 }
 
 // Stop the program and kill hanging routines
-func exit(quit chan bool) {
+func exit(logger *slog.Logger, quit chan bool) {
 	// function for normal exit
 	quit <- true
-	simpleExit()
+	simpleExit(logger)
 }
 
 // Exit while ignoring running routines
-func simpleExit() {
+func simpleExit(logger *slog.Logger) {
 	// Exit without using graceful shutdown channels
-	mensaBotLog.Info("Shutting down...")
+	logger.Info("Shutting down...")
 	os.Exit(0)
 }
 
 // Print info regarding a given message
-func printInfo(m *tb.Message) {
-	mensaBotLog.Info("[UniPassauBot] " + m.Sender.Username + " - " + m.Sender.FirstName + " " + m.Sender.LastName + " - ID: " + strconv.Itoa(m.Sender.ID) + "Message: " + m.Text + "\n")
+func printInfo(logger *slog.Logger, m *tb.Message) {
+	logger.Info("[UniPassauBot] " + m.Sender.Username + " - " + m.Sender.FirstName + " " + m.Sender.LastName + " - ID: " + strconv.Itoa(int(m.Sender.ID)) + "Message: " + m.Text + "\n")
 }
 
 // Answer wrapper
-func printAnswer(input string) {
-	mensaBotLog.Info("[UniPassauBot] Answer: " + input)
+func printAnswer(logger *slog.Logger, input string) {
+	logger.Info("[UniPassauBot] Answer: " + input)
 }
+

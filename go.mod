@@ -1,11 +1,14 @@
 module github.com/tionis/uni-passau-bot
 
-go 1.14
+go 1.20
 
 require (
-	github.com/heroku/x v0.0.25
 	github.com/jinzhu/now v1.1.1
-	github.com/keybase/go-logging v0.0.0-20200423195923-7a5ab2ef7dec
 	golang.org/x/text v0.3.3
 	gopkg.in/tucnak/telebot.v2 v2.3.3
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/pkg/errors v0.8.2-0.20190227000051-27936f6d90f9 // indirect
 )
